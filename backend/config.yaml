@@ -1,0 +1,17 @@
+server:
+  port: 8000
+  auth_enabled: false
+
+store:
+  type: "postgres"
+  postgres:
+    dsn: "postgres://zep:zeppassword@zep-db:5432/zep?sslmode=disable"
+
+nlp:
+  embeddings:
+    enabled: true
+    dimensions: 1536
+    service: "openai"
+
+llm:
+  model: "gpt-4o-mini"

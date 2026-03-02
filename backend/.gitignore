@@ -1,0 +1,19 @@
+# Python environment
+venv/
+.env
+
+# Configuration (Be careful: only ignore if it contains secrets)
+config.py
+
+# Python bytecode - Important to ignore these!
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Docker (Optional: ignore local data folders if created)
+db_data/

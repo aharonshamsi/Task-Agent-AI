@@ -1,0 +1,43 @@
+name: diary_bot_project
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: diary_bot_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: diary_bot
+      MYSQL_ROOT_PASSWORD: r207166075
+    ports:
+      - "3308:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  zep-db:
+    image: ankane/pgvector:latest
+    container_name: zep-db
+    restart: always
+    environment:
+      POSTGRES_USER: zep
+      POSTGRES_PASSWORD: zeppassword
+      POSTGRES_DB: zep
+    volumes:
+      - zep_db_data:/var/lib/postgresql/data
+
+  zep:
+    image: ghcr.io/getzep/zep:latest
+    container_name: diary_bot_zep
+    restart: always
+    depends_on:
+      - zep-db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    environment:
+      - ZEP_CONFIG_FILE=/app/config.yaml
+      - ZEP_OPENAI_API_KEY=${OPENAI_API_KEY}
+volumes:
+  db_data:
+  zep_db_data:
