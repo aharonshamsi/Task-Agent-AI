@@ -1,8 +1,17 @@
+// =========================================================
+// ChatScreen
+// =========================================================
+// Main chat interface using GiftedChat. Handles:
+// 1. Displaying initial system message.
+// 2. Sending user messages to the bot API.
+// 3. Rendering custom UI components (bubbles, avatar, input, send button, footer).
+// 4. Typing indicator management.
+// =========================================================
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, View, SafeAreaView, Platform, KeyboardAvoidingView } from 'react-native';
 import { GiftedChat } from 'react-native-gifted-chat';
 
-// ייבוא קבועים, שירותים וקומפוננטות UI
 import { COLORS } from '../constants/colors';
 import { sendMessageToBot } from '../services/botApi';
 import { Header } from '../components/Header';
@@ -15,14 +24,18 @@ import {
   renderFooter 
 } from '../components/ChatCustomUI';
 
-// הוספת פוליפיל עבור ID ייחודיים ש-GiftedChat צריך
 import 'react-native-get-random-values';
 
-// שינוי 1: הוספת onLogout כאן למעלה
 export const ChatScreen = ({ userToken, onLogout }) => {
+  // ---------------------------
+  // State
+  // ---------------------------
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
 
+  // ---------------------------
+  // Initial system message
+  // ---------------------------
   useEffect(() => {
     setMessages([
       {
@@ -34,22 +47,25 @@ export const ChatScreen = ({ userToken, onLogout }) => {
     ]);
   }, []);
 
+  // ---------------------------
+  // Handle sending messages
+  // ---------------------------
   const onSend = useCallback(async (newMessages = []) => {
     setMessages(prev => GiftedChat.append(prev, newMessages));
     const userText = newMessages[0].text;
-    
+
     setIsTyping(true);
 
     try {
       const response = await sendMessageToBot(userText, userToken);
-      
+
       const botMsg = {
         _id: Math.random().toString(),
         text: response.reply,
         createdAt: new Date(),
         user: { _id: 2, name: 'Smart Agent' },
       };
-      
+
       setMessages(prev => GiftedChat.append(prev, [botMsg]));
     } catch (err) {
       console.error("Chat error:", err);
@@ -58,11 +74,14 @@ export const ChatScreen = ({ userToken, onLogout }) => {
     }
   }, [userToken]);
 
+  // ---------------------------
+  // Render
+  // ---------------------------
   return (
     <SafeAreaView style={styles.container}>
-      {/* שינוי 2: הוספת ה-Prop ל-Header */}
+      {/* Header with logout */}
       <Header title="יומן חכם - סוכן אישי" onLogout={onLogout} />
-      
+
       <View style={styles.innerContainer}>
         <GiftedChat
           messages={messages}
@@ -88,11 +107,16 @@ export const ChatScreen = ({ userToken, onLogout }) => {
           }}
         />
       </View>
+
+      {/* Android Keyboard handling */}
       {Platform.OS === 'android' && <KeyboardAvoidingView behavior="padding" />}
     </SafeAreaView>
   );
 };
 
+// ---------------------------
+// Styles
+// ---------------------------
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   innerContainer: {

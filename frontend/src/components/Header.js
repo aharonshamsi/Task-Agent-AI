@@ -5,7 +5,7 @@ import { COLORS } from '../constants/colors';
 
 export const Header = ({ title, onLogout }) => (
   <View style={styles.header}>
-    {/* כפתור התנתקות בצד שמאל */}
+    {/* Logout button on the left side */}
     <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
       <MaterialIcons name="logout" size={22} color={COLORS.secondaryText} />
     </TouchableOpacity>

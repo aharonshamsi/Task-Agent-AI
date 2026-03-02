@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     paddingHorizontal: 10,
 
-    flexShrink: 1,      // חשוב למניעת חיתוך
-    flexWrap: 'wrap',   // מאפשר שבירת שורות
+    flexShrink: 1,
+    flexWrap: 'wrap',  
   },
 
   inputToolbar: {

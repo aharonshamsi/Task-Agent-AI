@@ -1,14 +1,30 @@
+// =========================================================
+// App Entry Point
+// =========================================================
+// This is the main application component. It handles:
+// 1. Checking for a saved user token on startup.
+// 2. Conditional rendering of ChatScreen or LoginScreen.
+// 3. User logout functionality.
+// =========================================================
+
 import React, { useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { View, ActivityIndicator } from 'react-native';
+
 import { ChatScreen } from './src/screens/ChatScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { View, ActivityIndicator } from 'react-native';
 import { COLORS } from './src/constants/colors';
 
 export default function App() {
-  const [token, setToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // ---------------------------
+  // State
+  // ---------------------------
+  const [token, setToken] = useState(null);      // Stores user authentication token
+  const [isLoading, setIsLoading] = useState(true); // Loading state while checking token
 
+  // ---------------------------
+  // Effect: Check if user is logged in
+  // ---------------------------
   useEffect(() => {
     const checkLogin = async () => {
       try {
@@ -22,20 +38,26 @@ export default function App() {
         setIsLoading(false);
       }
     };
+
     checkLogin();
   }, []);
 
-  // פונקציית ההתנתקות - מוחקת את הטוקן ומחזירה למסך ה-Login
+  // ---------------------------
+  // Logout handler
+  // ---------------------------
   const handleLogout = async () => {
     try {
-      await SecureStore.deleteItemAsync('userToken'); // מחיקה מהזיכרון הקבוע
-      setToken(null); // איפוס ה-State יגרום לרינדור מחדש של מסך ה-Login
+      await SecureStore.deleteItemAsync('userToken'); // Remove token from secure storage
     } catch (error) {
       console.log("Logout error:", error);
-      setToken(null); 
+    } finally {
+      setToken(null); // Reset state to trigger LoginScreen
     }
   };
 
+  // ---------------------------
+  // Loading screen while checking token
+  // ---------------------------
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -44,8 +66,10 @@ export default function App() {
     );
   }
 
+  // ---------------------------
+  // Conditional rendering based on token
+  // ---------------------------
   return token ? (
-    // העברת פונקציית ההתנתקות למסך הצ'אט
     <ChatScreen userToken={token} onLogout={handleLogout} />
   ) : (
     <LoginScreen onLoginSuccess={(newToken) => setToken(newToken)} />
