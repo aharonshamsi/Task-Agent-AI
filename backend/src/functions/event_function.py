@@ -10,24 +10,34 @@ def get_events_function(user_id: int, start_date: datetime, end_date: datetime):
 get_events_definition = {
     "name": "get_events",
     "description": (
-    "Retrieve user events. IMPORTANT: If the user asks a general question like 'what are my events?', "
-    "set start_date to the beginning of today and end_date to 14 days from now. "
-    "Always return events in a valid ISO format."
-        ),
+        "Retrieve user events within a specific time range.\n\n"
+
+        "CRITICAL RULES:\n"
+        "- NEVER return events that occur before the start_date.\n"
+        "- The function MUST only return events between start_date and end_date (inclusive).\n"
+        "- If the user asks about upcoming events (e.g., 'next events', 'coming up', 'this month'), "
+        "start_date MUST be set to the beginning of today (current datetime).\n"
+
+        "DEFAULT BEHAVIOR:\n"
+        "- For general queries like 'what are my events?', set start_date to now and end_date to 14 days from now.\n"
+        "- For queries like 'this month' or 'next month', adjust end_date accordingly (e.g., 30 days range).\n"
+
+        "All dates must be valid ISO datetime strings with timezone.\n"
+    ),
     "parameters": {
         "type": "object",
         "properties": {
             "start_date": {
                 "type": "string",
                 "description": (
-                    "Start of the time range as an ISO datetime. "
+                    "Start of the time range (inclusive) as ISO datetime. "
                     "Example: 2026-01-02T00:00:00+02:00"
                 )
             },
             "end_date": {
                 "type": "string",
                 "description": (
-                    "End of the time range as an ISO datetime. "
+                    "End of the time range (inclusive) as ISO datetime. "
                     "Example: 2026-01-02T23:59:59+02:00"
                 )
             }
@@ -159,12 +169,17 @@ def update_event_function(user_id: int, event_id: int, data: dict):
 
 
 
-
 update_event_definition = {
     "name": "update_event",
     "description": (
-        "Update an existing event. MUST choose event_id from the provided events list. "
-        "NEVER use event_hint."
+        "Update an existing event.\n\n"
+
+        "CRITICAL RULES:\n"
+        "- MUST use this function when the user corrects or modifies a previously mentioned event.\n"
+        "- Phrases like 'actually', 'change it', 'update', 'instead', or 'it should be' indicate an update.\n"
+        "- If the user refers to the last created or discussed event, use that event's ID.\n"
+        "- MUST choose event_id from the provided events list.\n"
+        "- NEVER use event_hint.\n"
     ),
     "parameters": {
         "type": "object",
@@ -186,7 +201,6 @@ update_event_definition = {
         "required": ["event_id", "data"]
     }
 }
-
 
 
 
