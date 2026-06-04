@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, SafeAreaView, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, View, SafeAreaView, Platform, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { GiftedChat } from 'react-native-gifted-chat';
 
 import { COLORS } from '../constants/colors';
 import { sendMessageToBot } from '../services/botApi';
 import { Header } from '../components/Header';
+import { CalendarSidebar } from '../components/CalendarSidebar';
 
 import { 
   renderAvatar, 
@@ -18,9 +19,65 @@ import {
 import 'react-native-get-random-values';
 import { startRecording, stopRecordingAndTranscribe } from '../services/audioService';
 
+const extractEventsFromResponse = (response) => {
+  if (Array.isArray(response?.events)) {
+    return response.events;
+  }
+
+  if (Array.isArray(response?.calendar_events)) {
+    return response.calendar_events;
+  }
+
+  if (Array.isArray(response?.data?.events)) {
+    return response.data.events;
+  }
+
+  return null;
+};
+
+const getEventEndTime = (event) => event.end_time || event.start_time;
+
+const normalizeEventForAgenda = (event) => {
+  const id = event.id || event.event_id;
+  const startTime = event.start_time || event.start;
+  const endTime = event.end_time || startTime;
+
+  if (!id || !startTime || !endTime) {
+    return null;
+  }
+
+  return {
+    id: String(id),
+    title: event.title || 'אירוע ללא כותרת',
+    description: event.description || '',
+    start_time: startTime,
+    end_time: endTime,
+  };
+};
+
+const filterActiveEvents = (events, currentTime = Date.now()) => {
+  return events.filter((event) => {
+    const endTime = new Date(getEventEndTime(event)).getTime();
+    return !Number.isNaN(endTime) && endTime >= currentTime;
+  });
+};
+
+const normalizeActiveEvents = (events, currentTime = Date.now()) => {
+  return filterActiveEvents(events.map(normalizeEventForAgenda).filter(Boolean), currentTime);
+};
+
+const getResponseSystemTime = (response) => {
+  const systemTime = new Date(response?.current_system_time).getTime();
+  return Number.isNaN(systemTime) ? Date.now() : systemTime;
+};
+
 export const ChatScreen = ({ userToken, onLogout }) => {
 
+  const { width } = useWindowDimensions();
+  const showCalendarSidebar = width > 768;
+
   const [messages, setMessages] = useState([]);
+  const [events, setEvents] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
@@ -33,6 +90,14 @@ export const ChatScreen = ({ userToken, onLogout }) => {
         user: { _id: 2, name: 'Smart Agent' },
       },
     ]);
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setEvents(previousEvents => filterActiveEvents(previousEvents));
+    }, 1000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleStartRecording = async () => {
@@ -73,10 +138,15 @@ export const ChatScreen = ({ userToken, onLogout }) => {
     try {
 
       const response = await sendMessageToBot(userText, userToken);
+      const syncedEvents = extractEventsFromResponse(response);
+
+      if (syncedEvents !== null) {
+        setEvents(normalizeActiveEvents(syncedEvents, getResponseSystemTime(response)));
+      }
 
       const botMsg = {
         _id: Math.random().toString(),
-        text: response.reply,
+        text: response.reply || 'בוצע בהצלחה',
         createdAt: new Date(),
         user: { _id: 2, name: 'Smart Agent' },
       };
@@ -100,35 +170,43 @@ export const ChatScreen = ({ userToken, onLogout }) => {
 
       <Header title="Agent Desk" onLogout={onLogout} />
 
-      <View style={styles.innerContainer}>
+      <View style={[styles.innerContainer, showCalendarSidebar && styles.wideInnerContainer]}>
 
-        <GiftedChat
-          messages={messages}
-          onSend={msgs => onSend(msgs)}
-          user={{ _id: 1 }}
+        <View style={styles.chatPanel}>
+          <GiftedChat
+            messages={messages}
+            onSend={msgs => onSend(msgs)}
+            user={{ _id: 1 }}
 
-          placeholder="הקלד הודעה..."
-          locale="he"
+            placeholder="הקלד הודעה..."
+            locale="he"
 
-          renderAvatar={renderAvatar}
-          renderBubble={renderBubble}
-          renderMessageText={renderMessageText}
-          renderInputToolbar={renderInputToolbarStable}
-          renderSend={renderSend}
-          renderFooter={() => renderFooter(isTyping)}
+            renderAvatar={renderAvatar}
+            renderBubble={renderBubble}
+            renderMessageText={renderMessageText}
+            renderInputToolbar={renderInputToolbarStable}
+            renderSend={renderSend}
+            renderFooter={() => renderFooter(isTyping)}
 
-          isTyping={isTyping}
-          scrollToBottom
+            isTyping={isTyping}
+            scrollToBottom
 
-          timeTextStyle={{
-            left: { color: COLORS.secondaryText },
-            right: { color: COLORS.secondaryText }
-          }}
+            timeTextStyle={{
+              left: { color: COLORS.secondaryText },
+              right: { color: COLORS.secondaryText }
+            }}
 
-          listViewProps={{
-            style: { backgroundColor: COLORS.background }
-          }}
-        />
+            listViewProps={{
+              style: { backgroundColor: COLORS.background }
+            }}
+          />
+        </View>
+
+        {showCalendarSidebar && (
+          <View style={styles.sidebarPanel}>
+            <CalendarSidebar events={events} />
+          </View>
+        )}
 
       </View>
 
@@ -150,8 +228,24 @@ const styles = StyleSheet.create({
   innerContainer: {
     flex: 1,
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 600 : '100%',
-    alignSelf: 'center'
+    alignSelf: 'center',
+    backgroundColor: COLORS.background
+  },
+
+  wideInnerContainer: {
+    flexDirection: 'row',
+    maxWidth: 1180
+  },
+
+  chatPanel: {
+    flex: 1,
+    backgroundColor: COLORS.background
+  },
+
+  sidebarPanel: {
+    flex: 0.54,
+    minWidth: 300,
+    maxWidth: 430
   }
 
 });

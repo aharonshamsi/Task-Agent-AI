@@ -6,12 +6,19 @@
 // in a hidden .env file and not committed to source control.
 // =========================================================
 
-// Base API URL - Centralized for easy updates
-// Use 'http://10.0.2.2:5000' for Android Emulator
-export const BASE_URL = 'http://127.0.0.1:5000';
+// Base API URL - Centralized for easy updates.
+// Web/iOS simulator: http://127.0.0.1:5000
+// Android emulator: http://10.0.2.2:5000
+// Physical device: http://YOUR_COMPUTER_LAN_IP:5000
+const DEFAULT_BASE_URL = 'http://127.0.0.1:5000';
+const configuredBotUrl = process.env.EXPO_PUBLIC_API_URL;
 
-// Base API URL from environment variable or local fallback
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || BASE_URL;
+export const BASE_URL = configuredBotUrl
+  ? configuredBotUrl.replace(/\/bot\/?$/, '')
+  : DEFAULT_BASE_URL;
+
+// Chat bot endpoint
+export const API_URL = configuredBotUrl || `${BASE_URL}/bot`;
 
 // Public auth token (should ideally be handled securely)
 export const AUTH_TOKEN = process.env.EXPO_PUBLIC_AUTH_TOKEN;
