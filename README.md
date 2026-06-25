@@ -1,70 +1,90 @@
-**BotDiary — Backend API**
+# BotDiary: AI-Powered Personal Calendar Assistant
 
-Professional README for development and production readiness.
+An intelligent personal calendar assistant that combines natural-language scheduling, persistent conversation memory, voice input, and JWT-protected user accounts in a full-stack mobile application.
 
-Project Overview
------------------
-`BotDiary` is a backend service for managing users and personal events (calendar/journal). It exposes a RESTful API, implements secure authentication, and provides full CRUD operations for events. The codebase is structured for maintainability and extension — suitable for development, staging, and production deployments.
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![React Native](https://img.shields.io/badge/React%20Native-Expo-61DAFB?logo=react&logoColor=black)
+![OpenAI](https://img.shields.io/badge/OpenAI-Function%20Calling-412991?logo=openai&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+![Zep](https://img.shields.io/badge/Zep-Memory%20Layer-0B5FFF)
 
-Purpose and Target Users
------------------
-- Mobile and web applications that need a personal calendar or diary service.
-- Can be used as a microservice in larger systems (notifications, analytics, integrations).
+## Table of Contents
 
-Key Features
------------------
-- JWT-based authentication and protected routes.
-- User lifecycle: sign up, update profile, delete account.
-- Event lifecycle: create, read, update, delete, and filter by date range.
-- Clean separation into `routes`, `services`, `repository`, and `models` layers.
-- Docker-friendly for easy local development and CI.
+- [About](#about)
+- [Key Features](#key-features)
+- [Architecture Overview](#architecture-overview)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Engineering Highlights](#engineering-highlights)
+- [Project Structure](#project-structure)
+- [Future Roadmap](#future-roadmap)
 
-Architecture
------------------
-- `routes/` — Flask endpoints and request routing.
-- `services/` — Business logic and validation.
-- `repository/` — Database access (SQLAlchemy ORM patterns).
-- `models/` — SQLAlchemy models representing DB tables.
+## About
 
-Technology Stack
------------------
-- Python 3.10+
-- Flask
-- Flask-JWT-Extended
-- SQLAlchemy
-- MySQL / MariaDB (or PostgreSQL with minor adjustments)
-- Docker & Docker Compose
+BotDiary is a capstone project that addresses a common productivity problem: users often want to manage calendar events conversationally instead of navigating traditional form-based interfaces. This assistant allows authenticated users to create, update, delete, and retrieve calendar entries through chat and voice commands.
 
-Security
------------------
-- Passwords must be hashed (Werkzeug or equivalent).
-- All protected endpoints require an `Authorization: Bearer <access_token>` header.
-- Keep secrets out of source control — use environment variables or a secret management system.
+The system combines:
 
-Configuration (important env vars)
------------------
-- `DATABASE_URL`  — Database connection string (SQLAlchemy DSN).
-- `JWT_SECRET_KEY` — Strong secret for signing tokens.
-- `FLASK_ENV` — `development` or `production`.
-- `EXPO_PUBLIC_API_URL` — Frontend base URL (if applicable).
+- A React Native frontend for mobile and web interaction
+- A Flask API for authentication, event management, and transcription
+- OpenAI function calling for natural-language intent extraction
+- Zep for persistent conversational memory
+- MySQL for structured user and event storage
 
-Example API Endpoints
------------------
-- POST `/auth/login` — Authenticate and receive `access_token`.
-	Request: `{ "email": "user@example.com", "password": "secret" }`.
+## Key Features
 
-- POST `/user` — Create a new user.
-	Request: `{ "email": "...", "password": "...", "name": "..." }`.
+- Natural-language calendar operations with OpenAI function calling
+- Event CRUD flows with authenticated access control
+- Conversation memory backed by Zep for context-aware responses
+- Voice-to-text input using OpenAI Whisper transcription
+- Timezone-aware scheduling logic centered on `Asia/Jerusalem`
+- Event synchronization in the chat UI after create, update, and delete actions
+- JWT-based session handling with secure token persistence on the client
 
-- GET `/events` — Get authenticated user's events (supports `from_date` and `to_date` query params in ISO 8601).
+## Architecture Overview
 
-- POST `/events` — Create event with fields such as `title`, `start`, `end`, `metadata`.
+The project is organized as a multi-layer assistant pipeline:
 
-Notes: For production-grade APIs, provide an OpenAPI/Swagger specification and explicit request/response examples with status codes.
+1. The frontend captures user input from chat or microphone and sends it to the backend with a JWT bearer token.
+2. The Flask API validates the token, loads user context, and forwards the request to the OpenAI chat model.
+3. OpenAI function calling selects the appropriate calendar action such as `get_events`, `add_event`, `update_event`, or `delete_event`.
+4. Zep stores conversation history and helps preserve short-term context across requests.
+5. MySQL stores user accounts and structured calendar data.
+6. The backend returns a normalized response plus refreshed event data so the React Native sidebar can stay in sync.
 
-Quick Start (local development)
------------------
-1. Create and activate virtual environment:
+High-level flow:
+
+```text
+React Native UI
+  -> Flask API with JWT
+  -> OpenAI function calling
+  -> Zep memory + MySQL event storage
+  -> Structured response back to the client
+```
+
+## Tech Stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React Native, Expo, React, React Native Gifted Chat, Expo Secure Store, Expo AV |
+| Backend | Python, Flask, Flask-CORS, Flask-JWT-Extended, Flask-SQLAlchemy |
+| AI / NLP | OpenAI API, function calling, Whisper transcription, Zep memory |
+| Data | MySQL, SQLAlchemy |
+| Deployment | Docker, Docker Compose |
+| Client Networking | Axios |
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10 or newer
+- Node.js 18 or newer
+- npm
+- Docker and Docker Compose
+- An OpenAI API key
+
+### 1. Backend Setup
 
 ```bash
 cd backend
@@ -73,52 +93,160 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. Create a `.env` with required variables (example):
+Create `backend/.env` with the required values:
 
-```bash
-DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/botdiary
-JWT_SECRET_KEY=replace_with_a_strong_secret
-FLASK_ENV=development
+```env
+SQLALCHEMY_DATABASE_URI=mysql+mysqlconnector://user:password@localhost:3308/diary_bot
+JWT_SECRET_KEY=replace_with_a_long_random_secret
+OPENAI_API_KEY=your_openai_api_key
+MYSQL_PASSWORD=your_mysql_root_password
 ```
 
-3. (Optional) Start services via Docker Compose for a full stack local environment:
+Notes:
+
+- `backend/config.py` loads environment variables from `.env`.
+- The backend expects a MySQL database and reads the SQLAlchemy connection string from `SQLALCHEMY_DATABASE_URI`.
+- The OpenAI client is initialized from `OPENAI_API_KEY`.
+
+### 2. Start the Database and Zep Services
+
+From the `backend` directory:
 
 ```bash
-docker-compose up -d --build
+docker compose up -d
 ```
 
-4. Run the Flask application:
+This starts:
+
+- `mysql:8.0` for application data
+- `zep-db` for Zep persistence
+- `zep` for conversation memory
+
+### 3. Run the Flask API
 
 ```bash
 flask --app app run --debug
 ```
 
-Production & Deployment Considerations
------------------
-- Use a production WSGI server (e.g., Gunicorn) behind a reverse proxy (e.g., Nginx).
-- Separate configuration for production (logging, monitoring, CORS policies, rate limiting).
-- Store secrets in a secure store (cloud provider secret manager or vault).
-- Implement schema migrations (Alembic) and automated DB backup/restore procedures.
+If you prefer running the module directly:
 
-Testing
------------------
-- Add unit tests for `services/` and integration tests for endpoints.
-- Use `pytest` and a dedicated test database or testcontainers for integration tests.
+```bash
+python app.py
+```
 
-Roadmap / Improvements
------------------
-- Pagination and sorting for list endpoints.
-- Refresh tokens and improved session management.
-- Role-based access control (RBAC) for admin features.
-- Background jobs for reminders/notifications (Celery, RQ).
-- Add CI pipeline with automated tests and linters.
+The API listens on port `5000`.
 
-Contributing
------------------
-To contribute, open an issue describing the change, create a branch, and submit a pull request with tests and a clear description of the change.
+### 4. Frontend Setup
 
-License
------------------
-Add an explicit open-source license (MIT/Apache-2.0) if you intend to publish the repository.
+```bash
+cd frontend
+npm install
+```
 
+Create `frontend/.env` with the API base URL:
+
+```env
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5000/bot
+```
+
+Optional client-side values used by the app:
+
+```env
+EXPO_PUBLIC_AUTH_TOKEN=your_optional_token
+```
+
+Start the Expo app:
+
+```bash
+npm start
+```
+
+You can also launch a specific target:
+
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
+### Environment Variables Summary
+
+| Variable | Location | Purpose |
+| --- | --- | --- |
+| `SQLALCHEMY_DATABASE_URI` | Backend `.env` | MySQL connection string used by Flask-SQLAlchemy |
+| `JWT_SECRET_KEY` | Backend `.env` | JWT signing key |
+| `OPENAI_API_KEY` | Backend `.env` | OpenAI and Zep-assisted AI features |
+| `MYSQL_PASSWORD` | Backend `.env` | Root password for the MySQL container |
+| `EXPO_PUBLIC_API_URL` | Frontend `.env` | Base URL for chat and transcription API calls |
+| `EXPO_PUBLIC_AUTH_TOKEN` | Frontend `.env` | Optional public token hook used by the client |
+
+## Engineering Highlights
+
+- JWT context propagation: authenticated routes derive the active user directly from the access token, reducing client-side trust assumptions.
+- Conversation session management: Zep session keys are scoped per user, which keeps memory isolated across accounts.
+- Timezone normalization: chat requests are converted into precise ISO 8601 values in `Asia/Jerusalem` before event lookup or mutation.
+- Function-call guardrails: the bot layer validates missing `event_id` values and falls back to recent event context when necessary.
+- Client-side session persistence: the mobile app stores JWTs with Expo Secure Store, while the web and mobile UIs consume the same API contract.
+
+## Project Structure
+
+```text
+.
+├── backend
+│   ├── app.py
+│   ├── config.py
+│   ├── config.yaml
+│   ├── docker-compose.yml
+│   ├── init.sql
+│   └── src
+│       ├── functions
+│       │   └── event_function.py
+│       ├── models
+│       │   ├── event_model.py
+│       │   └── user_model.py
+│       ├── repository
+│       │   ├── auth_repo.py
+│       │   ├── event_repo.py
+│       │   └── user_repo.py
+│       ├── routes
+│       │   ├── auth_routes.py
+│       │   ├── bot_routes.py
+│       │   ├── event_routes.py
+│       │   ├── transcription_routes.py
+│       │   └── user_routes.py
+│       └── services
+│           ├── auth_service.py
+│           ├── event_service.py
+│           ├── transcription_service.py
+│           └── user_service.py
+└── frontend
+    ├── App.js
+    ├── app.json
+    ├── babel.config.js
+    ├── package.json
+    └── src
+        ├── components
+        │   ├── CalendarSidebar.js
+        │   ├── ChatCustomUI.js
+        │   └── Header.js
+        ├── constants
+        │   ├── colors.js
+        │   └── config.js
+        ├── screens
+        │   ├── ChatScreen.js
+        │   └── LoginScreen.js
+        └── services
+            ├── audioService.js
+            └── botApi.js
+```
+
+## Future Roadmap
+
+- Add refresh-token support and explicit session revocation
+- Introduce pagination and date-range filtering for large event histories
+- Expand the assistant with recurring-event support
+- Add push notifications and scheduled reminders
+- Add automated tests for routes, services, and OpenAI function-calling flows
+- Publish an OpenAPI specification for the backend
+- Add containerized CI checks for linting, formatting, and test execution
 

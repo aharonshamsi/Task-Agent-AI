@@ -8,6 +8,7 @@
 from flask import request, jsonify
 from app import app, db
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
 
 from src.services.event_service import (
     create_event,
@@ -53,13 +54,19 @@ def add_event():
 def get_event():
     """
     Retrieves events for the authenticated user.
-    Optional query param: date (ISO format)
+    Optional query params: from_date and to_date (ISO format).
     """
     current_user_id = int(get_jwt_identity())
-    date = request.args.get('date')
+    from_date = request.args.get('from_date')
+    to_date = request.args.get('to_date')
+
+    if not from_date or not to_date:
+        now = datetime.utcnow()
+        from_date = (now - timedelta(days=30)).isoformat()
+        to_date = (now + timedelta(days=30)).isoformat()
 
     try:
-        events_output = fetch_user_events(current_user_id, date)
+        events_output = fetch_user_events(current_user_id, from_date, to_date)
         return jsonify({"events": events_output}), 200
 
     except ValueError as e:

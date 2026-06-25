@@ -4,6 +4,7 @@ import { GiftedChat } from 'react-native-gifted-chat';
 
 import { COLORS } from '../constants/colors';
 import { sendMessageToBot } from '../services/botApi';
+import { fetchEventsForUser } from '../services/eventApi';
 import { Header } from '../components/Header';
 import { CalendarSidebar } from '../components/CalendarSidebar';
 
@@ -91,6 +92,29 @@ export const ChatScreen = ({ userToken, onLogout }) => {
       },
     ]);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialEvents = async () => {
+      try {
+        const response = await fetchEventsForUser(userToken);
+        const initialEvents = extractEventsFromResponse(response);
+
+        if (isMounted && initialEvents !== null) {
+          setEvents(normalizeActiveEvents(initialEvents, getResponseSystemTime(response)));
+        }
+      } catch (error) {
+        console.error("Initial events load error:", error);
+      }
+    };
+
+    loadInitialEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userToken]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {

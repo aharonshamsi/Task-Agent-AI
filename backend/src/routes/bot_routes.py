@@ -32,6 +32,53 @@ client = OpenAI(api_key=Config.OPENAI_API_KEY)
 zep = ZepClient(base_url="http://127.0.0.1:8000")
 
 
+SYSTEM_TIMEZONE = ZoneInfo("Asia/Jerusalem")
+
+
+def ensure_system_timezone(value):
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=SYSTEM_TIMEZONE)
+
+    return parsed.astimezone(SYSTEM_TIMEZONE)
+
+
+def serialize_events_for_frontend(events, current_system_time):
+    serialized = []
+    current_system_time = ensure_system_timezone(current_system_time)
+
+    for event in events:
+        event_id = event.get("event_id") or event.get("id")
+        start_time = event.get("start_time")
+        end_time = event.get("end_time") or start_time
+
+        if not event_id or not start_time or not end_time:
+            continue
+
+        try:
+            start_dt = ensure_system_timezone(start_time)
+            end_dt = ensure_system_timezone(end_time)
+        except ValueError:
+            continue
+
+        if end_dt < current_system_time:
+            continue
+
+        serialized.append({
+            "id": str(event_id),
+            "title": event.get("title") or "Untitled Event",
+            "description": event.get("description") or "",
+            "start_time": start_dt.isoformat(),
+            "end_time": end_dt.isoformat(),
+        })
+
+    return serialized
+
+
 # ---------------------------
 # /bot POST endpoint
 # ---------------------------
@@ -142,7 +189,7 @@ def bot_chat():
         # ================== VALIDATION ==================
         if function_name in ("update_event", "delete_event") and "event_id" not in args:
             try:
-                fallback_id = events[0]["id"] if events else None
+                fallback_id = events[0]["event_id"] if events else None
                 if not fallback_id:
                     return jsonify({"reply": "לא הצלחתי לזהות אירוע"}), 200
                 args["event_id"] = fallback_id
@@ -182,10 +229,27 @@ def bot_chat():
     else:
         reply = message.content if message.content else "לא זוהתה פעולה"
 
+    synced_events = serialize_events_for_frontend(events, now_il)
+
+    if message.function_call and function_name in ("add_event", "update_event", "delete_event", "get_events"):
+        try:
+            refreshed_events = get_events_function(
+                current_user_id,
+                (now_il - timedelta(days=30)).isoformat(),
+                (now_il + timedelta(days=30)).isoformat()
+            )[:20]
+            synced_events = serialize_events_for_frontend(refreshed_events, now_il)
+        except Exception as e:
+            print(f"Event Sync Fetch Error: {e}")
+
     # ================== SAVE ASSISTANT MESSAGE ==================
     try:
         zep.memory.add_memory(session_id, Memory(messages=[Message(role="assistant", content=reply)]))
     except Exception as e:
         print(f"Zep Save Error: {e}")
 
-    return jsonify({"reply": reply}), 200
+    return jsonify({
+        "reply": reply,
+        "events": synced_events,
+        "current_system_time": now_il.isoformat()
+    }), 200
