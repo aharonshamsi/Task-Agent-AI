@@ -1,4 +1,4 @@
-# BotDiary: AI-Powered Personal Calendar Assistant
+# Task Agent AI: AI-Powered Personal Calendar Assistant
 
 An intelligent personal calendar assistant that combines natural-language scheduling, persistent conversation memory, voice input, and JWT-protected user accounts in a full-stack mobile application.
 
